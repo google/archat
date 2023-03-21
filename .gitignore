@@ -1,0 +1,18 @@
+# Generic
+.DS_Store
+*.zip
+*.tmp
+*.psd
+*.mp4
+*.webm
+*.mkv
+*.avi
+*.m4a
+
+# Chrome Plugin
+node_modules/
+package-lock.json
+output/
+builds/
+zips/
+backup/

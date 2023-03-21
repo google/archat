@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "ARChat",
+  "description": "ARChat is a rapid prototyping platform for augmented communication. Cite Visual Captions (CHI 2023) if you used it in research.",
+  "key": "<put-your-key-here>",
+  "version": "2.0",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "https://tse1.mm.bing.net/",
+    "https://tse2.mm.bing.net/",
+    "https://tse3.mm.bing.net/",
+    "https://tse4.mm.bing.net/"
+  ],
+  "background": {
+    "page": "background.html",
+    "persistent": true
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "browser_action": {
+    "default_icon": "images/icon128.png",
+    "default_title": "ARChat"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://preprod.meet.google.com/*",
+        "https://preprod.meet.sandbox.google.com/*",
+        "https://*.zoom.us/*",
+        "https://teams.microsoft.com/*"
+      ],
+      "js": [
+        "content.js",
+        "interactive_image.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "content_security_policy": "script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://ajax.googleapis.com https://firebasestorage.googleapis.com https://tfhub.dev https://www.youtube.com 'unsafe-eval'; object-src 'self'",
+  "web_accessible_resources": [
+    "client.js",
+    "interactive_image.js"
+  ]
+}
