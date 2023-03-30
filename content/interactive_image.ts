@@ -865,7 +865,7 @@ import {bingApiKey, gpt3ApiKey} from '../api_keys';
     if (gMeetCaptionsView) {
       const divs = document.querySelectorAll('div[class="TBMuR bj4p3b"]');
       for (const div of divs) {
-        let name = div.querySelector('div[class="zs7s8d jxFHg"]').textContent;
+        let name = div.querySelector('div[class="Mz6pEf wY1pdd"]').textContent;
         let wordSpans = Array.from(div.querySelectorAll('span'));
         captions += name + ': ';
         const sentence =

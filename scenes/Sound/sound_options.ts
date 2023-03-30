@@ -189,7 +189,7 @@ export const DEFAULT_SOUND_OPTIONS: SoundOptions = {
   fontFamily: 'Roboto',
 
   numLogs: 0,
-  captionSize: 56,
+  captionSize: 40,
 
   lamdaTriggerPauseMs: 1000,
   lamdaShowTimeMs: 1500,
