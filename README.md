@@ -95,7 +95,8 @@ contributors to add new scenes and take ownership of your AR experience:
 
 ## References
 
-ARChat is used for, has collaborated with the following research projects:
+ARChat has been leveraged in the following research projects. Consider citing
+our Visual Captions paper and related works when appropriate:
 
 Xingyu "Bruce" Liu, Vladimir Kirilyuk, Xiuxiu Yuan, Peggy Chi, Xiang "Anthony"
 Chen, Alex Olwal, and Ruofei Du. 2023. Visual Captions: Augmenting Verbal
@@ -109,7 +110,7 @@ Escolano, Abhishek Kar, Ping Yu, Ram Iyengar, Adarsh Kowdle, and Alex Olwal.
 2023. Rapsai: Accelerating Machine Learning Prototyping of Multimedia
 Applications Through Visual Programming. Proceedings of the 2023 CHI Conference
 on Human Factors in Computing Systems, pp. 23. DOI:
-https://doi.org/10.1145/3544548.3581338
+https://doi.org/10.1145/3544548.3581338 (Best Paper Honorable Mention)
 
 Xingyu "Bruce" Liu, Jun Zhang, Leonardo Ferrer, Susan Xu, Vikas Bahirwani, Boris
 Smus, Alex Olwal, and Ruofei Du. 2023. Modeling and Improving Text Stability in
