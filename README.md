@@ -81,10 +81,7 @@ Main directories:
 
 An `output` folder will be generated after building the plugin.
 
-### How to collaborate and add new scenes
-
-First of all, you need to request to be added to go/archat-members. We welcome
-contributors to add new scenes and take ownership of your AR experience:
+### How to add a new scene
 
 1.  Copy `PassThrough` folder into a new folder of your use case and add logic
     there.
