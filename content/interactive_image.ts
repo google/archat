@@ -19,7 +19,7 @@ import {bingApiKey, gpt3ApiKey} from '../api_keys';
   console.log('VC - check start interactive_image.js');
 
   // One in a while this part will break and you will have to update it.
-  const gMeetControllerName = 'D1tHje';
+  const gMeetControllerName = 'iOzk7';
 
   // finetuned models
   const MODELS = {

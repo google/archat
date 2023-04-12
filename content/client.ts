@@ -56,7 +56,7 @@ function fetchGoogleMeetCaptions() {
   let allCaptions = '';
 
   const gMeetCaptionsView =
-      document.querySelector('div[jscontroller="yQffFe"]');
+      document.querySelector('div[jscontroller="iOzk7"]');
 
   if (gMeetCaptionsView) {
     const divs = document.querySelectorAll('div[class="TBMuR bj4p3b"]');
