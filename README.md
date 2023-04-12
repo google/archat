@@ -2,20 +2,20 @@
 
 Copyright 2023 Google LLC
 
-
 [![ARChat Visual Captions](images/visual_captions_CHI2023.gif)](https://research.google/pubs/pub52074)
-
 
 **ARChat** is a research project written in TypeScript and JavaScript and aims
 to render live captions and relevant images directly onto the camera stream for
 online video conferences. It is an example Chrome Plugin that helps developers
 and researchers to prototype novel AR experiences with real-time and real-world
 conversations. **ARChat** is firstly introduced in our ACM CHI 2023 paper,
-entitled "Visual Captions: Augmenting Verbal Communication With On-the-fly
-Visuals", and is also used in "Modeling and Improving Text Stability in Live
-Captions" and "Rapsai: Accelerating Machine Learning Prototyping of Multimedia
-Applications Through Visual Programming". Please cite ARChat as follows if you
-find it useful in your projects:
+entitled
+["Visual Captions: Augmenting Verbal Communication With On-the-fly Visuals"](https://duruofei.com/projects/augmentedcommunication),
+and is also used in
+["Modeling and Improving Text Stability in Live Captions"](https://duruofei.com/papers/Liu_ModelingAndImprovingTextStabilityInLiveCaptions_CHIEA2023.pdf)
+and ["Rapsai: Accelerating Machine Learning Prototyping of Multimedia
+Applications Through Visual Programming"](https://duruofei.com/projects/rapsai).
+Please cite ARChat as follows if you find it useful in your projects:
 
 ```bibtex
 @inproceedings{Liu2023Visual,
@@ -32,8 +32,8 @@ find it useful in your projects:
 ## Chrome Plugin Key
 
 Before running this plugin, you need to apply a Chrome plugin key by following
-[this page](https://developer.chrome.com/docs/extensions/mv3/manifest/key).
-Then replace line 5 in `manifest.json` with your own key.
+[this page](https://developer.chrome.com/docs/extensions/mv3/manifest/key). Then
+replace line 5 in `manifest.json` with your own key.
 
 ## Getting Started
 
@@ -56,7 +56,7 @@ npm run build
 
 To run Visual Captions, you need to provide your own API keys in api_keys.ts
 file for the extension to work properly. Without API keys, you can also
-experience live captions in video confereing as instructed below:
+experience live captions in video conferences as instructed below:
 
 ### To install the plugin
 
@@ -64,8 +64,21 @@ experience live captions in video confereing as instructed below:
 2.  Enable `Developer mode` on the top right corner of the Extensions page.
 3.  Click `Load unpacked` and select the `output` folder of this file as a
     Chrome extension.
-4.  Go to https://meet.google.com and start a new meeting. Follow
-    go/archat-tutorial for the complete tutorial to get started.
+4.  Go to https://meet.google.com and start a new meeting.
+5.  Open one and ONLY ONE Google Meet page (e.g., https://meet.google.com/new)
+    Refresh gMeet page if you are already in a gMeet.
+6.  Enable Google Meet Captions by pressing ‘c’ in the keyboard if the captions
+    are not shown in the bottom.
+7.  (optional) Press ‘cmd -’ to zoom out the gMeet page to 80% or less so that
+    more captions could be captured by ARChat in gMeet.
+8.  Click the “three-dots” button in Google Meet, then click
+    `Settings->Video->Camera` to open the “Settings” page, select “ARChat
+    Virtual Camera” from the drop-down list of cameras.
+9.  (optional) You may tweak the settings of ARChat in the option page of the
+    plugin. See the pictures below. E.g., Use Meet Captions to “Everyone” to
+    summarize lectures and “yourself” to visualize your speech. For 1:1 talk,
+    set sending resolution to 720p in gMeet for the best experience when
+    possible. Set background image to Camera.
 
 ### Directory Structure
 
