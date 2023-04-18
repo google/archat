@@ -34,21 +34,15 @@
     {
       "matches": [
         "https://meet.google.com/*",
-        "https://preprod.meet.google.com/*",
-        "https://preprod.meet.sandbox.google.com/*",
+        "https://*.meet.google.com/*",
+        "https://*.meet.sandbox.google.com/*",
         "https://*.zoom.us/*",
         "https://teams.microsoft.com/*"
       ],
-      "js": [
-        "content.js",
-        "interactive_image.js"
-      ],
+      "js": ["content.js", "interactive_image.js"],
       "run_at": "document_start"
     }
   ],
   "content_security_policy": "script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://ajax.googleapis.com https://firebasestorage.googleapis.com https://tfhub.dev https://www.youtube.com 'unsafe-eval'; object-src 'self'",
-  "web_accessible_resources": [
-    "client.js",
-    "interactive_image.js"
-  ]
+  "web_accessible_resources": ["client.js", "interactive_image.js"]
 }
