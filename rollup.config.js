@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-// rollup.config.js
 import nodeResolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import copy from 'rollup-plugin-copy';
@@ -55,19 +54,17 @@ export default [
       generatedCode: 'es2015',
     },
     plugins: [
-      typescript(), nodeResolve(),
-      copy({
+      typescript(), nodeResolve(), copy({
         targets: [
           {
             src: [
-              'background/background.html',
-              'options/options.html',
+              'background/background.html', 'options/options.html',
               'manifest.json', 'content/content.js'
             ],
             dest: 'output'
           },
-          { src: 'images/*', dest: 'output/images' },
-          { src: 'models/nlp/*', dest: 'output/nlp' }
+          {src: 'images/*', dest: 'output/images'},
+          {src: 'models/nlp/*', dest: 'output/nlp'}
         ]
       })
     ]

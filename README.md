@@ -135,6 +135,8 @@ Computing Systems, pp. 8. DOI: https://doi.org/10.1145/3544549.3585609
   year = {2023},
   publisher = {ACM},
   series = {CHI},
+  articleno = {108},
+  numpages = {20},
   doi = {10.1145/3544548.3581566},
 }
 
@@ -145,6 +147,8 @@ Computing Systems, pp. 8. DOI: https://doi.org/10.1145/3544549.3585609
   year = {2023},
   publisher = {ACM},
   series = {CHI EA},
+  articleno = {208},
+  numpages = {9},
   doi = {10.1145/3544549.3585609},
 }
 
@@ -155,6 +159,8 @@ Computing Systems, pp. 8. DOI: https://doi.org/10.1145/3544549.3585609
   year = {2023},
   publisher = {ACM},
   series = {CHI},
+  articleno = {125},
+  numpages = {23},
   doi = {10.1145/3544548.3581338},
 }
 ```
