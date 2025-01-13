@@ -41,18 +41,16 @@ export class InteractiveImageScene extends Scene {
     }
   }
 
-
   setOptions(newOptions: InteractiveImageOptions) {
     console.log('interactive image setoptions');
     if (!newOptions) return;
 
     this.interactiveImageOptions = newOptions;
-    // this.update();
   }
 
   render(
       canvasCamImg: HTMLCanvasElement, mlPredictions: any,
-      effectOutputCanvas: HTMLCanvasElement, downsamplingRatio: number = 1) {
+      effectOutputCanvas: HTMLCanvasElement) {
     const ctx = effectOutputCanvas.getContext('2d')!;
 
     const SOUND_FONT = `40px Roboto`;
@@ -60,16 +58,9 @@ export class InteractiveImageScene extends Scene {
     ctx.strokeStyle = 'White';
     ctx.font = SOUND_FONT;
     ctx.lineWidth = 3;
-    // ctx.shadowOffsetX = 10;
-    // ctx.shadowOffsetY = 10;
-    // ctx.shadowColor = 'black';
-    // ctx.shadowBlur = 30;
 
     ctx.clearRect(0, 0, effectOutputCanvas.width, effectOutputCanvas.height);
     ctx.drawImage(canvasCamImg, 0, 0);
-
-    // const finalText = this.gSelfCaptions.split(' ').slice(-RANGE).join(' ');
-    // ctx.fillText(finalText, 100, 100, 800);
 
     function roundedImage(
         x: number, y: number, width: number, height: number, radius: number) {
@@ -124,7 +115,8 @@ export class InteractiveImageScene extends Scene {
         image.onload = () => {
           console.log('image loaded');
           this.image = image;
-        } image.src = url;
+        };
+        image.src = url;
       }
     }
     this.imageX = x;
