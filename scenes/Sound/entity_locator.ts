@@ -55,11 +55,49 @@ export class EntityLocator {
         console.log('image loaded');
         this.entityImg = img;
         resolve();
-      };
-      img.src = this.entityImgUrl!;
+      } img.src = this.entityImgUrl!;
     });
   }
 }
+
+////////////////////////
+// SPEECH PROCESSING
+////////////////////////
+
+// Helper to format entities
+// function formatEntities(entities: Entity[], text: string) {
+//   // sort returned entities
+//   let sortedEntities = []
+//   for (const entityDict of entities) {
+//     const { mentions, name, type, salience } = entityDict;
+//     for (const mention of mentions) {
+//       const { content, beginOffset } = mention.text;
+//       if (content !== name) continue;
+//       sortedEntities.push({
+//         name,
+//         type,
+//         salience,
+//         start: beginOffset,
+//         end: beginOffset + content.length,
+//         startWordIndex: getWordIndex(text, beginOffset),
+//         endWordIndex: getWordIndex(text, beginOffset + content.length),
+//         wikiUrl: entityDict.metadata.wikipedia_url
+//       });
+//     }
+//   }
+//   return sortedEntities;
+// }
+
+// given text and index of character, convert to index of word
+// function getWordIndex(text: string, index: number) {
+//   let word_index = 0;
+//   for (let i = 0; i < index; i++) {
+//     if (text[i] === " " || text[i] === "\n") {
+//       word_index += 1;
+//     }
+//   }
+//   return word_index;
+// }
 
 function compareSa(a: Entity, b: Entity) {
   return b.salience - a.salience;

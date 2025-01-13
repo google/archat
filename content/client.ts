@@ -14,14 +14,8 @@
  limitations under the License.
  */
 import {APP_SETTINGS} from '../options/app-settings';
+import {MESSAGE_TYPES} from '../options/message-types';
 import {EntityLocator} from '../scenes/Sound/entity_locator';
-import {SCENE_NAMES} from '../scenes/scene_names';
-
-import {PassthroughScene} from '../scenes/PassThrough/PassThrough';
-import {InteractiveImageScene} from '../scenes/Sound/InteractiveImage';
-import {SummarizationScene} from '../scenes/Sound/Transcription';
-
-import {Renderer} from '../background/renderer';
 
 declare global {
   interface Window {
@@ -52,48 +46,6 @@ function getDeviceId(videoConstraints: MediaTrackConstraints|boolean) {
 let virtualTrack: MediaStreamTrack|null = null;
 
 const entityLocator = new EntityLocator();
-const renderer = new Renderer();
-(window as any).renderer = renderer;
-
-renderer.setScene(SCENE_NAMES.InteractiveImage);
-
-window.addEventListener('message', (event) => {
-  const message = event.data;
-  if (!message.incoming) return;
-  if (message.type === 'SETTINGS') {
-    console.log('Received settings', message.settings);
-    applySettings(message.settings);
-  }
-});
-
-window.postMessage(
-    {
-      type: 'GET_SETTINGS',
-      outgoing: true,
-    },
-    '*');
-
-function applySettings(response: any) {
-  renderer.setScene(response.scene);
-  renderer.switchCamera(response.deviceId);
-
-  // #NewScene: Add new options here when adding a new scene.
-  if (Renderer.availableScenes.has(SCENE_NAMES.PassThrough)) {
-    (Renderer.availableScenes.get(SCENE_NAMES.PassThrough) as PassthroughScene)
-        .setZoom(response.passthroughZoom);
-  }
-
-  if (Renderer.availableScenes.has(SCENE_NAMES.Sound)) {
-    (Renderer.availableScenes.get(SCENE_NAMES.Sound) as SummarizationScene)
-        .setOptions(response.soundOptions);
-  }
-
-  if (Renderer.availableScenes.has(SCENE_NAMES.InteractiveImage)) {
-    (Renderer.availableScenes.get(SCENE_NAMES.InteractiveImage) as
-    InteractiveImageScene)
-        .setOptions(response.interactiveImageOptions);
-  }
-}
 
 /**
  * Fetches Google Meet captions if available.
@@ -124,12 +76,24 @@ function fetchGoogleMeetCaptions() {
     }
   }
 
-  renderer.setCaptions(
-    Boolean(gMeetCaptionsView),
-    captions,
-    selfCaptions,
-    allCaptions,
-  );
+  // if (selfCaptions) {
+  //   entityLocator.processText(selfCaptions).then(() => {
+  //     console.log('We processed the entity, yay');
+  //     console.log(entityLocator.entity, entityLocator.entityImgUrl,
+  //     entityLocator.entityImg);
+  //   });
+  // }
+
+  window.postMessage(
+      {
+        type: MESSAGE_TYPES.setCaptions,
+        captionsEnabled: Boolean(gMeetCaptionsView),
+        captions,
+        selfCaptions,
+        allCaptions,
+        outgoing: true,
+      },
+      '*');
 
   setTimeout(fetchGoogleMeetCaptions, APP_SETTINGS.fetchMeetCaptionFPSInMs);
 }
@@ -142,7 +106,91 @@ function makeStreamFromTrack(track: MediaStreamTrack) {
 
 async function getVirtualMediaStream(constraints: MediaTrackConstraints|
                                      boolean) {
-  return renderer.getStream();
+  if (virtualTrack) return makeStreamFromTrack(virtualTrack);
+
+  virtualTrack = await new Promise<MediaStreamTrack>(resolve => {
+    // Facebook Messenger requests camera twice. We need a way to distinguish
+    // messages between these requests. Signature will help us with that.
+    const signature = Math.trunc(performance.now());
+
+    const rtcConnection = new RTCPeerConnection();
+
+    // Saving listener as a variable because we want to remove it once
+    // the connection is established.
+    const windowMessageListener = async (event: any) => {
+      const message = event.data;
+      if (!message.incoming || message.signature !== signature) return;
+
+      switch (message.type) {
+        case MESSAGE_TYPES.rtcOffer:
+          await rtcConnection.setRemoteDescription(message.description);
+          const answer = await rtcConnection.createAnswer();
+          await rtcConnection.setLocalDescription(answer);
+          window.postMessage(
+              {
+                type: MESSAGE_TYPES.rtcAnswer,
+                description: new RTCSessionDescription(answer).toJSON(),
+                outgoing: true,
+                signature
+              },
+              '*');
+          break;
+        case MESSAGE_TYPES.rtcIce:
+          await rtcConnection.addIceCandidate(message.candidate);
+          break;
+        default:
+          console.warn(`Unsupported message type: ${message.type}.`);
+      }
+    };
+
+    window.addEventListener('message', windowMessageListener);
+
+    // We resolve promise with MediaStreamTrack on this event.
+    rtcConnection.addEventListener('track', (event) => {
+      const track = event.track;
+      // TODO(vkyryliuk): implement proper applyConstraints and clone patches.
+      // Right now it makes the camera not crash, however the client can't
+      // change resolution on an active track / clone track and then close it
+      // without closing the original.
+      track.applyConstraints = async () => {};
+      track.clone = () => track;
+      track.stop = () => {
+        MediaStreamTrack.prototype.stop.call(track);
+        virtualTrack = null;
+        rtcConnection.close();
+        window.postMessage(
+            {
+              type: MESSAGE_TYPES.closeStream,
+              outgoing: true,
+              signature,
+            },
+            '*');
+      };
+
+      window.removeEventListener('message', windowMessageListener);
+      resolve(track);
+    });
+
+    // ICE candidate should be sent to another peer.
+    rtcConnection.addEventListener('icecandidate', (event) => {
+      if (!event.candidate) return;
+      window.postMessage(
+          {
+            type: MESSAGE_TYPES.rtcIce,
+            candidate: event.candidate.toJSON(),
+            outgoing: true,
+            signature
+          },
+          '*');
+    });
+
+    // Once all listeners are set, requests the stream.
+    window.postMessage(
+        {type: MESSAGE_TYPES.getStream, constraints, outgoing: true, signature},
+        '*');
+  });
+
+  return makeStreamFromTrack(virtualTrack);
 }
 
 /**
@@ -158,7 +206,6 @@ function patchNativeAPI() {
 
     if (videoDeviceId !== 'virtual') {
       restoreVideoMirrorMode();
-      console.log('Current this', this);
       return MediaDevices.prototype.getUserMedia.call(this, constraints);
     } else {
       removeVideoMirrorMode();
@@ -215,6 +262,16 @@ function restoreVideoMirrorMode() {
     styleSheet.parentNode!.removeChild(styleSheet);
   }
 }
+
+/**
+ * Restores navigator.mediaDevices to its original state.
+ * Commented out to keep lint happy until I can think of a good use case for it.
+ */
+// function restoreNativeAPI() {
+//   delete navigator.mediaDevices.getUserMedia;
+//   delete navigator.mediaDevices.enumerateDevices;
+//   navigator.mediaDevices.dispatchEvent(new CustomEvent('devicechange'));
+// }
 
 patchNativeAPI();
 fetchGoogleMeetCaptions();

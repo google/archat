@@ -1,4 +1,4 @@
-/**
+/*
  Copyright 2023 Google LLC
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,21 +13,20 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-import { getGeminiRawResult, getBingSearchThumbnail } from '../models/modelClient';
-import { Options } from '../options/options';
-import { Renderer } from '../background/renderer';
-
-declare global {
-  interface Window {
-    renderer: Renderer;
-  }
-}
+import {bingApiKey, gpt3ApiKey} from '../api_keys';
 
 (async () => {
   console.log('VC - check start interactive_image.js');
 
   // One in a while this part will break and you will have to update it.
   const gMeetControllerName = 'D1tHje';
+
+  // finetuned models
+  const MODELS = {
+    davinci: 'davinci:ft-personal-2022-08-10-08-50-23',
+    curie: 'curie:ft-personal-2022-08-10-09-30-02',
+    ada: 'ada:ft-personal-2022-08-10-16-42-21',
+  };
 
   interface LogEntry {
     type: string;
@@ -77,11 +76,88 @@ declare global {
     'selfie',     'sticker',      'map'
   ];
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // OPTIONS
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // options class
+  class Options {
+    enabled = false;
+    proactiveness: string;
+    enableAllCaptions = false;
+    enableEmoji = false;
+    enablePersonal = false;
+    model: keyof typeof MODELS;
+    visualSize = 1;
+    numVisuals: number;
+    numEmojis: number;
+    numWords: number;
+    lastNSentences: number;
+    updateInterval = 500;
+    visualWidth: number;
+    visualHeight: number;
+    visualLeft = 85;
+    visualTopInterval = 2;
+    bingImageRatio: String;
+    emojiWidth: number;
+    emojiHeight: number;
+    emojiTop = 90;
+    emojiLeft = 80;
+    emojiLeftInterval = 1;
+    bingEmojiRatio: String;
+    spotlightLeft = 7;
+    spotlightTop = 7;
+    spotlightImageWidth = 24;
+    spotlightEmojiWidth = 10;
+    enableLogging: boolean;
+    onTapQuerying = false;
+
+    constructor() {
+      this.visualWidth = 12 * this.visualSize;
+      this.visualHeight = 8 * this.visualSize;
+      this.bingImageRatio =
+          `&w=${40 * this.visualWidth}&h=${40 * this.visualHeight}`;
+      this.emojiWidth = 3 * this.visualSize;
+      this.emojiHeight = 3 * this.visualSize;
+      this.bingEmojiRatio =
+          `&w=${40 * this.emojiWidth}&h=${40 * this.emojiHeight}`;
+    }
+
+    // update options
+    update() {
+      chrome.storage.local.get(['interactiveImageOptions'], (response) => {
+        let interactiveImageOptions = response.interactiveImageOptions;
+        this.enabled = interactiveImageOptions.enableButton;
+        this.proactiveness = interactiveImageOptions.proactiveness;
+        this.enableAllCaptions = interactiveImageOptions.enableAllCaptions;
+        this.enableEmoji = interactiveImageOptions.enableEmoji;
+        this.enablePersonal = interactiveImageOptions.enablePersonal;
+        this.model = interactiveImageOptions.model;
+        this.visualSize = interactiveImageOptions.visualSize;
+        this.visualWidth = 12 * this.visualSize;
+        this.visualHeight = 8 * this.visualSize;
+        this.emojiWidth = 3 * this.visualSize;
+        this.numVisuals = interactiveImageOptions.numVisuals;
+        this.lastNSentences = interactiveImageOptions.lastNSentences;
+        this.numEmojis = interactiveImageOptions.numEmojis;
+        this.numWords = interactiveImageOptions.numWords;
+        this.enableLogging = interactiveImageOptions.enableLogging;
+        // console.log("DEBUG - options", this);
+      });
+    }
+  }
+
   const options = new Options();
+
 
   // Data logging
   class Logging {
     logging: LogEntry[] = [];
+
+    // type, message, timestamp
+    // visual suggested, {visual, source, imgUrl}, timestamp
+    // visual selected
+    // visual removed
 
     // log data
     log(type: string, message: Record<string, string>) {
@@ -94,101 +170,136 @@ declare global {
       };
       console.log('Logging', logEntry);
       this.logging.push(logEntry);
+      chrome.storage.local.set({interactiveImageLogging: this.logging});
     }
   }
 
   const logging = new Logging();
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // // Visual retrieval
-  // //////////////////////////////////////////////////////////////////////////////
-  // async function getBingSearchThumbnail(searchTerm: string) {
-  //   const query = encodeURI(searchTerm);
-  //   const url = `https://api.bing.microsoft.com/v7.0/images/search?q=${
-  //       query}&mkt=en-us&safeSearch=moderate&count=1&offset=0`;
-  //   const response = await fetch(url, {
-  //                      headers: {'Ocp-Apim-Subscription-Key': bingApiKey},
-  //                      method: 'GET',
-  //                    }).catch(e => {console.log(e)});
-  //   if (!response) return '';
-  //   const result = await response.json();
-  //   console.log('VC bin search result -', result);
-  //   // if not defined
-  //   if (result.value == undefined) {
-  //     return '';
-  //   }
-  //   if (searchTerm.toLowerCase().includes('emoji')) {
-  //     return result.value.map((val: {thumbnailUrl: string}) => val.thumbnailUrl)
-  //                .shift() +
-  //         options.bingEmojiRatio + '&c=7';
-  //   }
-  //   return result.value.map((val: {thumbnailUrl: string}) => val.thumbnailUrl)
-  //              .shift() +
-  //       options.bingImageRatio + '&c=7';
-  // }
+  ///////////////////////////////////////////////////////////////////////////////
+  // LANGUAGE MODELS
+  ///////////////////////////////////////////////////////////////////////////////
+
+  // GPT-3
+  async function getGpt3RawResult(
+      text: string, prompt_prefix: string, prompt_suffix: string) {
+    if (text.length == 0) {
+      return
+    }
+    const prompt = prompt_prefix + text + prompt_suffix
+    const messages = await callGPT3(prompt);
+    let result = messages.choices[0].text;
+    return result;
+  }
+
+  async function callGPT3(prompt: string) {
+    const modelType = options.model;
+
+    const data = {
+      'prompt': prompt,
+      'max_tokens': 64,
+      'temperature': 0.0,
+      'frequency_penalty': 0.5,
+      'stop': ['\n'],
+      'model': MODELS[modelType]
+    }
+
+    const response = await fetch(
+        // "https://api.openai.com/v1/engines/" + model_davinci +
+        // "/completions",
+        'https://api.openai.com/v1/completions', {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + gpt3ApiKey
+          },
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+    const result = await response.json();
+    return result;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Visual retrieval
+  //////////////////////////////////////////////////////////////////////////////
+  async function getBingSearchThumbnail(searchTerm: string) {
+    const query = encodeURI(searchTerm);
+    const url = `https://api.bing.microsoft.com/v7.0/images/search?q=${
+        query}&mkt=en-us&safeSearch=moderate&count=1&offset=0`;
+    const response = await fetch(url, {
+                       headers: {'Ocp-Apim-Subscription-Key': bingApiKey},
+                       method: 'GET',
+                     }).catch(e => {console.log(e)});
+    if (!response) return '';
+    const result = await response.json();
+    // if not defined
+    if (result.value == undefined) {
+      return '';
+    }
+    if (searchTerm.toLowerCase().includes('emoji')) {
+      return result.value.map((val: {thumbnailUrl: string}) => val.thumbnailUrl)
+                 .shift() +
+          options.bingEmojiRatio + '&c=7';
+    }
+    return result.value.map((val: {thumbnailUrl: string}) => val.thumbnailUrl)
+               .shift() +
+        options.bingImageRatio + '&c=7';
+  }
+
 
   //////////////////////////////////////////////////////////////////////////////
   // Process text: input text, return a list of entity objects
   //////////////////////////////////////////////////////////////////////////////
-  async function processText(text: string): Promise<Entity[]> {
+  async function processText(text: string) {
+    const entities: Entity[] = [];
     console.log('VC - processText', text);
-    
-    if (!text.trim()) {
-      console.warn('Empty text provided to processText');
-      return [];
-    }
-  
-    try {
-      // let prompt_prefix = '';
-      // let prompt_suffix = ' ->';
-      // let result = await getGpt3RawResult(text, prompt_prefix, prompt_suffix);
-      const result = await getGeminiRawResult(text);
-      console.log('VC llm result -', result);
-  
-      if (!result) {
-        console.warn('No result from Gemini');
-        return [];
-      }
+    // call llm
+    // let prompt_prefix = PROMT;
+    // let prompt_suffix = "\nVisuals:";
+    // call gpt3 finetuned
+    let prompt_prefix = '';
+    let prompt_suffix = ' ->';
+    // result = await getLamdaRawResult(text, prompt_prefix, prompt_suffix);
+    let result = await getGpt3RawResult(text, prompt_prefix, prompt_suffix);
+    // result = callLamdaFromBg(text, prompt_prefix, prompt_suffix);
 
-      const entities: Entity[] = [];
-      const names = result.split(';');
-  
-      await Promise.all(names.map(async (item) => {
-        const [name, source] = parseNameAndSource(item);
-        if (!name) return;
-        console.log('VC current name, source pair: ', name, source);
-  
-        const imgUrl = await getBingSearchThumbnail(name, options);
-        console.log('VC img url -', imgUrl);
-        if (imgUrl) {
-          await addEntity(name, source, imgUrl, entities);
-        }
-      }));
-  
-      console.log('VC: current entities -', entities);
-      return entities;
-    } catch (error) {
-      console.error('Error in processText:', error);
+    if (result == undefined) {
       return [];
     }
-  }
-  
-  function parseNameAndSource(item: string): [string | null, string | null] {
-    const lowercaseItem = item.toLowerCase();
-    if (!lowercaseItem.includes('from')) {
-      return [null, null];
+    // clean
+    result = result.trim();
+    result = result.split('\n')[0];
+
+    if (result.length == 0 || result.toLowerCase().includes('none') ||
+        result.toLowerCase().includes('>')) {
+      return [];
     }
-  
-    let [name, source] = item.split('from').map(s => s.trim());
-  
-    if (!name.includes('emoji') && !name.includes('map')) {
-      const ofIndex = name.indexOf('of');
-      if (ofIndex !== -1) {
-        name = name.substring(ofIndex + 2).trim();
+    console.log('VC llm result -', result);
+
+    // query multiple images
+    let names = result.split(';');
+    for (let i = 0; i < names.length; i++) {
+      // split by "from"
+      if (!names[i].toLowerCase().includes('from')) {
+        continue;
       }
+      let name = names[i].split('from')[0].trim();
+      let source = names[i].split('from')[1].trim();
+      // TEMP if name include "emoji"
+      if (!name.includes('emoji') && !name.includes('map')) {
+        // get the index of the first "of"
+        let index = name.indexOf('of');
+        // get the remaining
+        name = name.substring(index + 2);
+      }
+      const imgUrl = await getBingSearchThumbnail(name);
+      if (imgUrl.length == 0) {
+        continue;
+      }
+      await addEntity(name, source, imgUrl, entities);
     }
-  
-    return [name, source];
+    console.log('VC entities -', entities);
+    return entities;
   }
 
 
@@ -210,14 +321,9 @@ declare global {
       img.onload = () => {
         console.log('VC - image loaded');
         // add to list
-        if (entities.length >= 10) {
-          // Remove the first item
-          entities.shift();
-        }
         entities.push({img, imgUrl, name, source});
         resolve();
-      };
-      img.src = imgUrl;
+      } img.src = imgUrl;
     });
   }
 
@@ -237,7 +343,9 @@ declare global {
     constructor(
         public container: HTMLElement, public entity: Entity,
         private index: number, private isEmoji: boolean) {
-      // get width according to height
+      // // Right and Top values in percents to support scaling.
+      // this.height = VISUAL_HEIGHT;
+      // // get width according to height
       if (this.isEmoji) {
         this.width = options.emojiWidth;
         this.left = options.emojiLeft +
@@ -440,12 +548,14 @@ declare global {
             const width = options.emojiWidth;
             this.left -= (width + options.emojiLeftInterval);
             this.imageContainer.style.left = `${this.left}%`;
+            // this.sendImageToBackground();
             sendImagesToBackground();
           } else {
             this.index = Math.max(0, this.index - 1);
             const height = options.visualHeight;  // %
             this.top -= (height + 4 * options.visualTopInterval);
             this.imageContainer.style.top = `${this.top}%`;
+            // this.sendImageToBackground();
             sendImagesToBackground();
           }
         }
@@ -531,7 +641,6 @@ declare global {
           this.imageContainer?.remove();
           this.imageContainer = undefined;
           this.entity = undefined;
-          console.log('Posting message');
           window.postMessage(
               {
                 type: 'SET_IMAGE',
@@ -543,14 +652,6 @@ declare global {
                 outgoing: true,
               },
               '*');
-          window.renderer.setImage(
-            0,
-            0,
-            0,
-            0,
-            null,
-            '',
-          );
         }
 
     blockEvent =
@@ -697,14 +798,18 @@ declare global {
     let width = imageWidget.imageContainer.clientWidth / parentWidth;
     let height = imageWidget.imageContainer.clientHeight / parentHeight;
 
-    window.renderer.setImage(
-      x,
-      y,
-      width,
-      height,
-      imageWidget.entity.img.src,
-      imageWidget.entity.name,
-    );
+    window.postMessage(
+        {
+          type: 'SET_IMAGE',
+          x,
+          y,
+          width,
+          height,
+          url: imageWidget.entity.img.src,
+          name: imageWidget.entity.name,
+          outgoing: true,
+        },
+        '*');
   }
 
   function getName(video: HTMLVideoElement) {
@@ -719,12 +824,8 @@ declare global {
 
   function createWidget(entity: Entity, isEmoji: boolean) {
     const videos = document.querySelectorAll('video');
-    let video;
-    if (videos.length === 1) {
-      video = videos[0];
-    } else {
-      video = Array.from(videos).find((video) => getName(video).includes('You'));
-    }
+    const video =
+        Array.from(videos).find((video) => getName(video).includes('You'));
     const container = video.parentElement;
 
     if (isEmoji) {
@@ -743,147 +844,188 @@ declare global {
   //////////////////////////////////////////////////////////////////////////////
   let fetchCaptionsHandle: number|NodeJS.Timeout;
   async function fetchGoogleMeetCaptions() {
+    // REPEAT
     options.update();
     if (!options.enabled) {
       console.log('VC - Disabled');
-      return scheduleNextFetch();
+      fetchCaptionsHandle =
+          setTimeout(fetchGoogleMeetCaptions, options.updateInterval);
+      return;
     }
-  
+
+
     console.log('VC - fetchGoogleMeetCaptions');
-  
-    const captions = fetchCaptionsFromDOM();
-    if (!captions) return scheduleNextFetch();
-  
-    const chosenCaptions = options.enableAllCaptions ? captions.allCaptions : captions.selfCaptions;
-    if (!chosenCaptions) return scheduleNextFetch();
-  
-    await processAndGenerateVisuals(chosenCaptions);
-  
-    return scheduleNextFetch();
-  }
-  
-  function fetchCaptionsFromDOM() {
-    const gMeetCaptionsView = document.querySelector(`div[jscontroller="${gMeetControllerName}"]`);
-    if (!gMeetCaptionsView) return null;
-  
+    let captions = '';
     let selfCaptions = '';
     let allCaptions = '';
-  
-    const divs = document.querySelectorAll('div[class="TBMuR bj4p3b"]');
-    for (const div of divs) {
-      const name = div.querySelector('div[class="zs7s8d jxFHg"]').textContent;
-      const sentence = Array.from(div.querySelectorAll('span'))
-        .map(span => span.textContent.trim())
-        .join(' ');
-  
-      if (name === 'You' || name === 'Your Presentation') {
-        selfCaptions += sentence;
+
+    const gMeetCaptionsView =
+        document.querySelector(`div[jscontroller="${gMeetControllerName}"]`);
+
+    if (gMeetCaptionsView) {
+      const divs = document.querySelectorAll('div[class="TBMuR bj4p3b"]');
+      for (const div of divs) {
+        let name = div.querySelector('div[class="zs7s8d jxFHg"]').textContent;
+        let wordSpans = Array.from(div.querySelectorAll('span'));
+        captions += name + ': ';
+        const sentence =
+            wordSpans.map(span => span.textContent.trim()).join(' ');
+        if (name === 'You' || name === 'Your Presentation') {
+          selfCaptions += sentence;
+          // console.log("DEBUG - selfCaptions", selfCaptions);
+        }
+        captions += sentence + '\n';
+        allCaptions += sentence;
       }
-      allCaptions += sentence;
     }
-  
-    return { selfCaptions, allCaptions };
-  }
-  
-  async function processAndGenerateVisuals(captions: string) {
-    const text = extractTextForProcessing(captions);
-    if (text === lastText) {
-      console.log('VC - same text will not generate new content: ', text);
-      return;
+
+
+    let chosenCaptions = selfCaptions;
+    if (options.enableAllCaptions) {
+      chosenCaptions = allCaptions;
     }
-  
-    lastText = text;
-    const entityList = await processText(text);
-    
-    for (const entity of entityList) {
-      if (entityAlreadyDisplayed(entity, getAllImageWidgets())) continue;
-  
-      logVisualCreation(entity, text);
-      await createAndDisplayWidget(entity);
+
+    // GENERATE VISUALS FROM CAPTIONS
+    if (chosenCaptions) {
+      async function generateVisuals(chosenCaptions: string) {
+        // get the last sentence
+        let sentences =
+            chosenCaptions.match(/[^.?!]+[.!?]+[\])'"`’”]*|.+/g);
+        let text = '';
+        let lastSentence = sentences[sentences.length - 1];
+        let prevSentences = (sentences.slice(
+                                 sentences.length - options.lastNSentences,
+                                 sentences.length - 1))
+                                .join(' ');
+        // if current text ends with punctuation
+        // ?
+        if (lastSentence.endsWith('.') || lastSentence.endsWith('?') ||
+            lastSentence.endsWith('!')) {
+          text = prevSentences + ' ' + lastSentence;
+          text = text.trim();
+        } else {
+          if (lastSentence.split(' ').length > options.numWords) {
+            text = prevSentences + ' ' + lastSentence;
+            text = text.trim();
+          } else if (sentences.length > 1) {
+            text = prevSentences;
+            text = text.trim();
+          }
+        }
+        console.log('VC - text', text);
+
+        // don't send text - same as last text
+        if (text == lastText) {
+          console.log('VC - same text, don\'t send');
+        }
+
+        else {
+          lastText = text;
+          let entityList = await processText(text);
+          for (let i = 0; i < entityList.length; i++) {
+            const entity = entityList[i];
+            // if already displayed, in the queue
+            let allImageWidgets =
+                candidateImageWidgets.concat(spotlightImageWidgets);
+            allImageWidgets = allImageWidgets.concat(candidateEmojiWidgets);
+            if (entityAlreadyDisplayed(entity, allImageWidgets)) {
+              continue;
+            }
+
+            // log data
+            logging.log('visual created', {
+              visual: entity.name,
+              source: entity.source,
+              imgUrl: entity.imgUrl,
+              speech: lastText,
+            });
+
+            // if EMOJI
+            if (entity.source.toLowerCase().includes('emoji')) {
+              if (options.enableEmoji) {
+                if (candidateEmojiWidgets.length + 1 > options.numEmojis) {
+                  // remove the oldest image widget
+                  candidateEmojiWidgets[0].resetUI();
+                }
+
+                const isEmoji = true;
+                const widget = createWidget(entity, isEmoji);
+                candidateEmojiWidgets.push(widget);
+                widget.createHtmlElement().catch(console.error);
+              } else {
+                console.log('VC - Emoji disabled');
+              }
+            }
+
+            // if PERSONAL
+            else if (entity.source.toLowerCase().includes('personal')) {
+              if (options.enablePersonal) {
+                if (candidateImageWidgets.length + 1 > options.numVisuals) {
+                  // remove the oldest image widget
+                  candidateImageWidgets[0].resetUI();
+                }
+
+                const isEmoji = false;
+                const widget = createWidget(entity, isEmoji);
+                candidateImageWidgets.push(widget);
+                widget.createHtmlElement().catch(console.error);
+              } else {
+                console.log('VC - Personal disabled');
+              }
+            }
+
+            // if not emoji or personal
+            else {
+              if (candidateImageWidgets.length + 1 > options.numVisuals) {
+                // remove the oldest image widget
+                candidateImageWidgets[0].resetUI();
+              }
+
+              const isEmoji = false;
+              const widget = createWidget(entity, isEmoji);
+              candidateImageWidgets.push(widget);
+              widget.createHtmlElement().catch(console.error);
+            }
+          }
+        }
+      }
+
+      // check AI proactiveness
+      if (options.proactiveness === 'Suggestion' || options.onTapQuerying) {
+        generateVisuals(chosenCaptions);
+      }
+
+      else if (options.proactiveness === 'Automatic') {
+        console.log('VC - Automatic');
+        generateVisuals(chosenCaptions);
+      }
+
+      else if (options.proactiveness === 'OnTap') {
+        // tap spacebar to generate visuals
+        document.body.onkeyup = function(e) {
+          if (e.key == ' ' || e.code == 'Space' || e.keyCode == 32) {
+            console.log('VC - space pressed, OnTap');
+            options.onTapQuerying = true;
+            setTimeout(() => {
+              options.onTapQuerying = false;
+            }, 3000);
+          }
+        }
+      }
     }
+    fetchCaptionsHandle =
+        setTimeout(fetchGoogleMeetCaptions, options.updateInterval);
   }
 
-  function getAllImageWidgets() {
-    return [
-      ...candidateImageWidgets,
-      ...spotlightImageWidgets,
-      ...candidateEmojiWidgets
-    ];
-  }
+  window.addEventListener('message', (event) => {
+    const message = event.data;
 
-  function logVisualCreation(entity: Entity, speech: string): void {
-    logging.log('visual created', {
-      visual: entity.name,
-      source: entity.source,
-      imgUrl: entity.imgUrl,
-      speech: speech,
-    });
-  }
-  
-  function extractTextForProcessing(captions: string): string {
-    const sentences = captions.match(/[^.?!]+[.!?]+[\])'"`'"]*|.+/g) || [];
-    const lastSentence = sentences[sentences.length - 1] || '';
-    const prevSentences = sentences.slice(-options.lastNSentences, -1).join(' ');
-  
-    if (lastSentence.endsWith('.') || lastSentence.endsWith('?') || lastSentence.endsWith('!')) {
-      return `${prevSentences} ${lastSentence}`.trim();
-    } else if (lastSentence.split(' ').length > options.numWords) {
-      return `${prevSentences} ${lastSentence}`.trim();
-    } else if (sentences.length > 1) {
-      return prevSentences.trim();
-    }
-    return '';
-  }
-  
-  async function createAndDisplayWidget(entity: Entity) {
-    console.log('VC - generating new content from entity', entity);
-    const isEmoji = entity.source.toLowerCase().includes('emoji');
-    const isPersonal = entity.source.toLowerCase().includes('personal');
-  
-    if (isEmoji && !options.enableEmoji) {
-      console.log('VC - Emoji disabled');
-      return;
-    }
-  
-    if (isPersonal && !options.enablePersonal) {
-      console.log('VC - Personal disabled');
-      return;
-    }
-  
-    const widgetList = isEmoji ? candidateEmojiWidgets : candidateImageWidgets;
-    const maxWidgets = isEmoji ? options.numEmojis : options.numVisuals;
-  
-    if (widgetList.length >= maxWidgets) {
-      widgetList[0].resetUI();
-      widgetList.shift();
-    }
-  
-    const widget = createWidget(entity, isEmoji);
-    widgetList.push(widget);
-    await widget.createHtmlElement();
-  }
-  
-  function scheduleNextFetch(): NodeJS.Timeout {
-    return setTimeout(fetchGoogleMeetCaptions, options.updateInterval);
-  }
-  
-  // Main execution
-  if (options.proactiveness === 'OnTap') {
-    document.body.onkeyup = handleSpacebarPress;
-  }
-  
-  function handleSpacebarPress(e: KeyboardEvent) {
-    if (e.key === ' ' || e.code === 'Space' || e.keyCode === 32) {
-      console.log('VC - space pressed, OnTap');
-      options.onTapQuerying = true;
-      setTimeout(() => {
-        options.onTapQuerying = false;
-      }, 3000);
-    }
-  }
+    if (message.type !== 'CURRENT_SCENE') return;
+    if (message.scene === 'Interactive Images (beta)') {
+      // addBootstrap();
+      // addOptions();
 
-  function toggleEffect(enable: boolean) {
-    if (enable) {
+      // LOAD OPTIONS
       options.update();
 
       if (!fetchCaptionsHandle) {
@@ -899,16 +1041,7 @@ declare global {
       spotlightImageWidgets.forEach(widget => widget.resetUI());
       spotlightImageWidgets = [];
     }
-  }
-
-  window.addEventListener('message', (event) => {
-    const message = event.data;
-
-  if (message.type !== 'CURRENT_SCENE') return;
-    toggleEffect(message.scene === 'Interactive Images (beta)');
   });
-
-  toggleEffect(true);
 
   window.postMessage(
       {
@@ -916,6 +1049,8 @@ declare global {
         outgoing: true,
       },
       '*');
+
+
 
   //////////////////////////////////////////////////////////////////////////////
   // HELPERS
@@ -969,24 +1104,22 @@ declare global {
   }
 
   function removeStopwords(str: string) {
-    const res: string[] = [];
-    const words = str.split(' ')
+    const res: string[] = [] const words = str.split(' ')
     for (let i = 0; i < words.length; i++) {
-      const word_clean = words[i].split('.').join('');
+      const word_clean = words[i].split('.').join('')
       if (!stopwords.includes(word_clean)) {
-        res.push(word_clean);
+        res.push(word_clean)
       }
     }
     return (res.join(' '));
   }
 
   function removeVisualTypes(str: string) {
-    const res = [];
-    const words = str.split(' ');
+    const res = [] const words = str.split(' ')
     for (let i = 0; i < words.length; i++) {
-      const word_clean = words[i].split('.').join('');
+      const word_clean = words[i].split('.').join('')
       if (!visualTypes.includes(word_clean)) {
-        res.push(word_clean);
+        res.push(word_clean)
       }
     }
     return (res.join(' '));

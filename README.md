@@ -75,10 +75,10 @@ experience live captions in video conferences as instructed below:
     `Settings->Video->Camera` to open the “Settings” page, select “ARChat
     Virtual Camera” from the drop-down list of cameras.
 9.  (optional) You may tweak the settings of ARChat in the option page of the
-    plugin. E.g., Use Meet Captions to “Everyone” to summarize lectures and
-    “yourself” to visualize your speech. For 1:1 talk, set sending resolution
-    to 720p in gMeet for the best experience when possible. Set background image
-    to Camera.
+    plugin. See the pictures below. E.g., Use Meet Captions to “Everyone” to
+    summarize lectures and “yourself” to visualize your speech. For 1:1 talk,
+    set sending resolution to 720p in gMeet for the best experience when
+    possible. Set background image to Camera.
 
 ### Directory Structure
 
@@ -135,6 +135,8 @@ Computing Systems, pp. 8. DOI: https://doi.org/10.1145/3544549.3585609
   year = {2023},
   publisher = {ACM},
   series = {CHI},
+  articleno = {108},
+  numpages = {20},
   doi = {10.1145/3544548.3581566},
 }
 
@@ -145,6 +147,8 @@ Computing Systems, pp. 8. DOI: https://doi.org/10.1145/3544549.3585609
   year = {2023},
   publisher = {ACM},
   series = {CHI EA},
+  articleno = {208},
+  numpages = {9},
   doi = {10.1145/3544549.3585609},
 }
 
@@ -155,6 +159,8 @@ Computing Systems, pp. 8. DOI: https://doi.org/10.1145/3544549.3585609
   year = {2023},
   publisher = {ACM},
   series = {CHI},
+  articleno = {125},
+  numpages = {23},
   doi = {10.1145/3544548.3581338},
 }
 ```

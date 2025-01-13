@@ -7,8 +7,7 @@
     "preserveConstEnums": true,
     "sourceMap": false,
     "experimentalDecorators": true,
-    "useDefineForClassFields": false,
-    "moduleResolution": "node"
+    "useDefineForClassFields": false
   },
   "files": [
     "options/options.ts",

@@ -192,7 +192,7 @@ export class SummarizationScene extends Scene {
     this.lang.summarizing = CAPTION_SUMMARIZING[lower];
 
     // Saves the sound logs.
-    // chrome.storage.local.set({soundLogs: this.soundLogs});
+    chrome.storage.local.set({soundLogs: this.soundLogs});
     // console.log('saving logs', this.soundLogs);
   }
 

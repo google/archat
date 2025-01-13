@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-export type Canvas = OffscreenCanvas|HTMLCanvasElement|HTMLVideoElement;
+export type Canvas = OffscreenCanvas|HTMLCanvasElement;
 
 export type Context2D =
     OffscreenCanvasRenderingContext2D|CanvasRenderingContext2D;
@@ -33,12 +33,16 @@ export class Scene {
 
   // modelDependencies: string[] = [];
 
+  // UseDownsampledInput
+  useDownsampledCanvas: boolean = false;
+
   init() {}
 
   stop() {}
 
   render(
-      inputCanvas: Canvas, predictions: any, outputCanvas: Canvas) {}
+      inputCanvas: Canvas, predictions: any, outputCanvas: Canvas,
+      downsamplingRatio = 1) {}
 
   // getModelDependencies() {
   //   return this.modelDependencies;
