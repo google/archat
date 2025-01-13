@@ -1,19 +1,19 @@
 {
   "dependencies": {
-    "@material/mwc-list": "^0.25.3",
-    "@material/mwc-select": "^0.25.3",
-    "@types/chrome": "^0.0.163",
-    "lit": "^2.0.2"
+    "@types/chrome": "^0.0.248",
+    "lit": "^3.0.0",
+    "prettier": "^3.0.3",
+    "@google/generative-ai": "^0.12.0"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^13.0.6",
     "@rollup/plugin-typescript": "^8.3.0",
     "rollup-plugin-copy": "^3.4.0",
-    "tslib": "^2.4.0",
-    "typescript": "^4.6.4"
+    "tslib": "^2.6.2",
+    "typescript": "^5.2.2"
   },
   "scripts": {
-    "build": "npm i; npx rollup -c --silent",
+    "build": "npm i; npx rollup -c",
     "Xclean": "Xnpm i; Xrm -rf ./output; npx rollup -c --silent; cd output; ln -s ../../rapsai-core/pkg rapsai-core;",
     "gpush": "git push origin HEAD:refs/for/main"
   }

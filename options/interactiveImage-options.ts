@@ -238,7 +238,8 @@ class InteractiveImageOptionsWidget extends LitElement {
       numWords: parseInt(this.numWords.value),
       lastNSentences: parseInt(this.lastNSentences.value),
       enableLogging: this.enableLogging.checked,
-    } console.log(this.interactiveImageOptions);
+    };
+    console.log(this.interactiveImageOptions);
     chrome.storage.local.set(
         {interactiveImageOptions: this.interactiveImageOptions});
   }
