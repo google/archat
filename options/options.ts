@@ -18,12 +18,11 @@ import './sound-options';
 
 import {html, LitElement} from 'lit';
 import {customElement, query, state} from 'lit/decorators.js';
-
-import {SCENE_NAMES} from '../scenes/scene_names';
-
-import {APP_SETTINGS} from './app-settings';
-import {BASE_CSS} from './common-css';
-import {MESSAGE_TYPES} from './message-types';
+import { SCENE_NAMES } from '../scenes/scene_names';
+import { APP_SETTINGS } from './app-settings';
+import { BASE_CSS } from './common-css';
+import { DEFAULT_INTERACTIVEIMAGE_OPTIONS } from '../scenes/Sound/InteractiveImage_options';
+import {Renderer} from '../background/renderer';
 
 /**
  * Checks if we have access to the camera and microphone.
@@ -44,6 +43,80 @@ const SCENES = [
   SCENE_NAMES.Sound,
   SCENE_NAMES.InteractiveImage,
 ];
+
+// Type definitions
+type ModelType = 'davinci' | 'curie' | 'ada';
+
+// Constants
+const MODELS: Record<ModelType, string> = {
+  davinci: 'davinci:ft-personal-2022-08-10-08-50-23',
+  curie: 'curie:ft-personal-2022-08-10-09-30-02',
+  ada: 'ada:ft-personal-2022-08-10-16-42-21',
+};
+
+// options class
+export class Options {
+  enabled = false;
+  proactiveness = 'automatic';
+  enableAllCaptions = false;
+  enableEmoji = false;
+  enablePersonal = false;
+  model: keyof typeof MODELS;
+  visualSize = 1;
+  numVisuals: number;
+  numEmojis: number;
+  numWords: number;
+  lastNSentences: number;
+  updateInterval = 500;
+  visualWidth: number;
+  visualHeight: number;
+  visualLeft = 85;
+  visualTopInterval = 2;
+  bingImageRatio: String;
+  emojiWidth: number;
+  emojiHeight: number;
+  emojiTop = 90;
+  emojiLeft = 80;
+  emojiLeftInterval = 1;
+  bingEmojiRatio: String;
+  spotlightLeft = 7;
+  spotlightTop = 7;
+  spotlightImageWidth = 24;
+  spotlightEmojiWidth = 10;
+  enableLogging: boolean;
+  onTapQuerying = false;
+
+  constructor() {
+    this.visualWidth = 12 * this.visualSize;
+    this.visualHeight = 8 * this.visualSize;
+    this.bingImageRatio =
+        `&w=${40 * this.visualWidth}&h=${40 * this.visualHeight}`;
+    this.emojiWidth = 3 * this.visualSize;
+    this.emojiHeight = 3 * this.visualSize;
+    this.bingEmojiRatio =
+        `&w=${40 * this.emojiWidth}&h=${40 * this.emojiHeight}`;
+  }
+
+  // update options
+  update() {
+    let interactiveImageOptions = DEFAULT_INTERACTIVEIMAGE_OPTIONS;
+    this.enabled = interactiveImageOptions.enableButton;
+    this.proactiveness = interactiveImageOptions.proactiveness;
+    this.enableAllCaptions = interactiveImageOptions.enableAllCaptions;
+    this.enableEmoji = interactiveImageOptions.enableEmoji;
+    this.enablePersonal = interactiveImageOptions.enablePersonal;
+    this.model = interactiveImageOptions.model as keyof typeof MODELS;
+    this.visualSize = interactiveImageOptions.visualSize;
+    this.visualWidth = 12 * this.visualSize;
+    this.visualHeight = 8 * this.visualSize;
+    this.emojiWidth = 3 * this.visualSize;
+    this.numVisuals = interactiveImageOptions.numVisuals;
+    this.lastNSentences = interactiveImageOptions.lastNSentences;
+    this.numEmojis = interactiveImageOptions.numEmojis;
+    this.numWords = interactiveImageOptions.numWords;
+    this.enableLogging = interactiveImageOptions.enableLogging;
+  }
+}
 
 /**
  * Option page for rendering sliders and communicate with background thread.
@@ -222,45 +295,10 @@ class OptionsPage extends LitElement {
 
   async preview() {
     console.log('Connecting...');
-    const port = chrome.runtime.connect({name: 'options'});
-    const rtcConnection = new RTCPeerConnection();
-    // Assigning separately so closurized event below don't question whether
-    // values exist.
-    this.port = port;
-    this.rtcConnection = rtcConnection;
+    const renderer = new Renderer();
 
-    // Send ICE candidate info to another RTCPeerConnection.
-    rtcConnection.addEventListener('icecandidate', (event) => {
-      if (event.candidate) {
-        port.postMessage(
-            {type: MESSAGE_TYPES.rtcIce, candidate: event.candidate});
-      }
-    });
-
-    rtcConnection.addEventListener('track', (event) => {
-      const mediaStream = new MediaStream();
-      mediaStream.addTrack(event.track);
-      this.video.srcObject = mediaStream;
-      this.video.muted = true;
-    });
-
-    port.onMessage.addListener(async (msg) => {
-      switch (msg.type) {
-        case MESSAGE_TYPES.rtcOffer:
-          await rtcConnection.setRemoteDescription(msg.description);
-          const answer = await rtcConnection.createAnswer();
-          await rtcConnection.setLocalDescription(answer);
-          port.postMessage(
-              {type: MESSAGE_TYPES.rtcAnswer, description: answer});
-          break;
-        case MESSAGE_TYPES.rtcIce:
-          await rtcConnection.addIceCandidate(msg.candidate);
-          break;
-        default:
-          console.warn(`Unsupported message type: ${msg.type}.`);
-      }
-    });
-
-    port.postMessage({type: MESSAGE_TYPES.getStream});
+    const mediaStream = await renderer.getStream();
+    this.video.srcObject = mediaStream;
+    this.video.muted = true;
   }
 }

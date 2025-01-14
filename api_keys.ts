@@ -14,8 +14,8 @@
  limitations under the License.
  */
 // Only these two keys are useful in Visual Captions, please apply your own.
-export const bingApiKey = '<use-your-keys>';
-export const gpt3ApiKey = '<use-your-keys>';
+export const bingApiKey = '';
+export const gpt3ApiKey = '';
 // You don't need these keys for any opensource experiences.
-export const googleApiKey = '<use-your-keys>';
-export const hfApiKey = '<use-your-keys>';
+export const googleApiKey = '';
+export const hfApiKey = '';

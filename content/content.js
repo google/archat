@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
+
 /**
  * Content Script for TFJS Cam Effects Chrome Extension.
  *
@@ -21,27 +22,43 @@
  * native API.
  * - becomes a proxy between background and emulator script.
  **/
-
 (function () {
   // Forces webcam emulation.
   const SCRIPT = document.createElement('script');
-  SCRIPT.setAttribute('src', chrome.extension.getURL('client.js'));
+  SCRIPT.setAttribute('src', chrome.runtime.getURL('client.js'));
   const root = document.documentElement;
   root.insertBefore(SCRIPT, root.lastChild);
 
-  // const IMAGE_SCRIPT = document.createElement('script');
-  // IMAGE_SCRIPT.setAttribute('src', chrome.extension.getURL('interactive_image.js'));
-  // root.insertBefore(IMAGE_SCRIPT, root.lastChild);
+  const IMAGE_SCRIPT = document.createElement('script');
+  IMAGE_SCRIPT.setAttribute('src', chrome.runtime.getURL('interactive_image.js'));
+  root.insertBefore(IMAGE_SCRIPT, root.lastChild);
 
-
-  const port = chrome.runtime.connect({ name: 'client' });
+  // const port = chrome.runtime.connect({ name: 'client' });
   window.addEventListener('message', (message) => {
     if (message.data.outgoing) {
-      port.postMessage(message.data);
+      if (message.data.type === 'GET_SETTINGS') {
+        sendSettings();
+      }
     }
   });
 
-  port.onMessage.addListener((msg) => {
-    window.postMessage({ ...msg, incoming: true }, '*');
+  function sendSettings() {
+    chrome.storage.local.get(
+      {
+        scene: 'Interactive Images (beta)',
+        deviceId: null,
+        passthroughZoom: 1,
+        soundOptions: null,
+        interactiveImageOptions: null,
+      },
+      (response) => {
+        window.postMessage({incoming: true, type: 'SETTINGS', settings: response}, '*');
+      });
+  }
+
+  // Listens for changes from options page; if so, sets new options for scene.
+  chrome.storage.onChanged.addListener(async (changes, namespace) => {
+    if (namespace !== 'local') return;
+    sendSettings();
   });
 })();
