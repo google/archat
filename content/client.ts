@@ -102,36 +102,71 @@ function fetchGoogleMeetCaptions() {
   let captions = '';
   let selfCaptions = '';
   let allCaptions = '';
+  const captionContainer = document.querySelector('div[jsname="dsyhDe"]');
+  
+  if (captionContainer) {
+    const captionBlocks = document.querySelectorAll('div[jsname="tgaKEf"][class*="bh44bd"]');
+    
+    for (const block of captionBlocks) {
+      const spans = Array.from(block.querySelectorAll('span'));
+      if (spans.length === 0) continue;
+      
+      const sentence = spans.map(span => span.textContent.trim()).join(' ');
 
-  const gMeetCaptionsView =
-      document.querySelector('div[jscontroller="D1tHje"]');
-
-  if (gMeetCaptionsView) {
-    const divs = document.querySelectorAll('div[class="TBMuR bj4p3b"]');
-    for (const div of divs) {
-      let name = div.querySelector('div[class="zs7s8d jxFHg"]')!.textContent;
-      let wordSpans = Array.from(div.querySelectorAll('span'));
-      captions += name + ': ';
-      const sentence = wordSpans.map(span => span.textContent.trim()).join(' ');
-      if (name === 'You' || name.indexOf('Presentation') !== -1) {
+      const parentBlock = block.closest('div[jsname="YSxPC"]');
+      const isUserCaption = determineIfUserCaption(parentBlock);
+      
+      if (isUserCaption) {
         if (selfCaptions.length > 0) {
           selfCaptions += ' ';
         }
         selfCaptions += sentence;
       }
+
       captions += sentence + '\n';
-      allCaptions += sentence;
+      allCaptions += sentence + ' ';
+      
+      console.log('Caption found:', sentence);
     }
   }
 
   renderer.setCaptions(
-    Boolean(gMeetCaptionsView),
+    Boolean(captionContainer && allCaptions.length > 0),
     captions,
     selfCaptions,
-    allCaptions,
+    allCaptions
   );
 
   setTimeout(fetchGoogleMeetCaptions, APP_SETTINGS.fetchMeetCaptionFPSInMs);
+}
+
+// Helper function to determine if a caption block belongs to the current user
+function determineIfUserCaption(element: Element) {
+  if (!element) return false;
+  
+  const hasUserIndicators = element.classList.contains('wY1pdd');
+  
+  const siblingElements: any[] | HTMLCollection = element.parentElement?.children || [];
+  for (const sibling of siblingElements) {
+    if (sibling.textContent?.includes('You')) {
+      return true;
+    }
+  }
+  let current = element;
+  for (let i = 0; i < 3; i++) {
+    if (!current.parentElement) break;
+    current = current.parentElement;
+    
+    // Check if any parent element contains "You" text
+    if (current.textContent?.includes('You')) {
+      return true;
+    }
+  }
+  
+  // Default to true for the first caption if we can't determine
+  // This is a fallback assuming the first caption is often the user's
+  const isFirstCaptionBlock = !element.previousElementSibling;
+  return isFirstCaptionBlock || hasUserIndicators;
 }
 
 function makeStreamFromTrack(track: MediaStreamTrack) {
@@ -158,7 +193,6 @@ function patchNativeAPI() {
 
     if (videoDeviceId !== 'virtual') {
       restoreVideoMirrorMode();
-      console.log('Current this', this);
       return MediaDevices.prototype.getUserMedia.call(this, constraints);
     } else {
       removeVideoMirrorMode();
@@ -214,6 +248,39 @@ function restoreVideoMirrorMode() {
   if (styleSheet) {
     styleSheet.parentNode!.removeChild(styleSheet);
   }
+}
+
+window.addEventListener('message', (event) => {
+  const message = event.data;
+  if (!message.incoming) return;
+  
+  if (message.type === 'SETTINGS') {
+    console.log('Received settings', message.settings);
+    applySettings(message.settings);
+  } else if (message.type === 'SIDE_PANEL_COMMAND') {
+    // Handle side panel specific commands
+    handleSidePanelCommand(message.command, message.data);
+  }
+});
+
+// Function to handle side panel commands
+function handleSidePanelCommand(command: string, data: any) {
+  switch(command) {
+    case 'SET_SCENE':
+      renderer.setScene(data.scene);
+      break;
+    case 'TOGGLE_FEATURE':
+      // Handle feature toggle
+      break;
+  }
+  
+  window.postMessage({
+    type: 'UPDATE_SIDE_PANEL',
+    outgoing: true,
+    state: {
+      currentScene: renderer.getCurrentScene(),
+    }
+  }, '*');
 }
 
 patchNativeAPI();

@@ -761,31 +761,78 @@ declare global {
   
     return scheduleNextFetch();
   }
-  
+
   function fetchCaptionsFromDOM() {
-    const gMeetCaptionsView = document.querySelector(`div[jscontroller="${gMeetControllerName}"]`);
-    if (!gMeetCaptionsView) return null;
-  
+    const captionContainer = document.querySelector('div[jsname="dsyhDe"]');
+    
+    if (!captionContainer) return null;
+    
     let selfCaptions = '';
     let allCaptions = '';
-  
-    const divs = document.querySelectorAll('div[class="TBMuR bj4p3b"]');
-    for (const div of divs) {
-      const name = div.querySelector('div[class="zs7s8d jxFHg"]').textContent;
-      const sentence = Array.from(div.querySelectorAll('span'))
-        .map(span => span.textContent.trim())
-        .join(' ');
-  
-      if (name === 'You' || name === 'Your Presentation') {
+ 
+    const captionBlocks = document.querySelectorAll('div[jsname="tgaKEf"][class*="bh44bd"]');
+    
+    if (captionBlocks.length === 0) return null;
+    
+    for (const block of captionBlocks) {
+      // Extract text from all spans in this block
+      const spans = Array.from(block.querySelectorAll('span'));
+      if (spans.length === 0) continue;
+      
+      const sentence = spans.map(span => span.textContent.trim()).join(' ');
+      
+      // Try to determine if this is the user's caption
+      const parentBlock = block.closest('div[jsname="YSxPC"]');
+      const isUserCaption = determineIfUserCaption(parentBlock);
+      
+      // Add to appropriate captions collection
+      if (isUserCaption) {
+        if (selfCaptions.length > 0) {
+          selfCaptions += ' ';
+        }
         selfCaptions += sentence;
       }
-      allCaptions += sentence;
+      
+      // Add to all captions
+      allCaptions += sentence + ' ';
+      
+      console.log('VC - Caption found:', sentence.substring(0, 50) + (sentence.length > 50 ? '...' : ''));
     }
-  
-    return { selfCaptions, allCaptions };
+    
+    return allCaptions || selfCaptions ? { selfCaptions, allCaptions } : null;
+  }
+
+  function determineIfUserCaption(element: Element) {
+    if (!element) return false;
+    
+    // Method 1: Check for visual indicators in parent elements
+    const hasUserIndicators = element.classList.contains('wY1pdd');
+    
+    // Method 2: Look for "You" text nearby
+    const siblingElements: any[] | HTMLCollection = element.parentElement?.children || [];
+    for (const sibling of siblingElements) {
+      if (sibling.textContent?.includes('You')) {
+        return true;
+      }
+    }
+    
+    // Check parent elements up to 3 levels
+    let current = element;
+    for (let i = 0; i < 3; i++) {
+      if (!current.parentElement) break;
+      current = current.parentElement;
+      
+      if (current.textContent?.includes('You')) {
+        return true;
+      }
+    }
+
+    const isFirstCaptionBlock = !element.previousElementSibling;
+    return isFirstCaptionBlock || hasUserIndicators;
   }
   
   async function processAndGenerateVisuals(captions: string) {
+    console.log('VC - processAndGenerateVisuals', captions);
     const text = extractTextForProcessing(captions);
     if (text === lastText) {
       console.log('VC - same text will not generate new content: ', text);

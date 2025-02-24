@@ -47,6 +47,15 @@ export default [
     plugins: [typescript(), nodeResolve()]
   },
   {
+    input: 'sidepanel.ts',
+    output: {
+      dir: 'output',
+      format: 'es',
+      generatedCode: 'es2015',
+    },
+    plugins: [typescript(), nodeResolve()]
+  },
+  {
     input: 'background/background.ts',
     output: {
       dir: 'output',
@@ -62,6 +71,7 @@ export default [
             src: [
               'background/background.html',
               'options/options.html',
+              'sidepanel.html',
               'manifest.json', 'content/content.js'
             ],
             dest: 'output'
