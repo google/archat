@@ -720,11 +720,7 @@ declare global {
   function createWidget(entity: Entity, isEmoji: boolean) {
     const videos = document.querySelectorAll('video');
     let video;
-    if (videos.length === 1) {
-      video = videos[0];
-    } else {
-      video = Array.from(videos).find((video) => getName(video).includes('You'));
-    }
+    video = videos[0];
     const container = video.parentElement;
 
     if (isEmoji) {
@@ -741,7 +737,7 @@ declare global {
   //////////////////////////////////////////////////////////////////////////////
   // MAIN
   //////////////////////////////////////////////////////////////////////////////
-  let fetchCaptionsHandle: number|NodeJS.Timeout;
+  let fetchCaptionsHandle: number|NodeJS.Timeout; 
   async function fetchGoogleMeetCaptions() {
     options.update();
     if (!options.enabled) {
@@ -764,73 +760,57 @@ declare global {
 
   function fetchCaptionsFromDOM() {
     const captionContainer = document.querySelector('div[jsname="dsyhDe"]');
-    
-    if (!captionContainer) return null;
+    if (!captionContainer) {
+      console.log('VC - No caption container found');
+      return null;
+    }
     
     let selfCaptions = '';
     let allCaptions = '';
- 
-    const captionBlocks = document.querySelectorAll('div[jsname="tgaKEf"][class*="bh44bd"]');
+
+    const childDivs = Array.from(captionContainer.children[0].children);
+    if (childDivs.length <= 1) {
+      console.log('VC - Not enough caption content divs found');
+      return null;
+    }
     
-    if (captionBlocks.length === 0) return null;
+    const contentDivs = childDivs.slice(0, -1);
     
-    for (const block of captionBlocks) {
-      // Extract text from all spans in this block
-      const spans = Array.from(block.querySelectorAll('span'));
-      if (spans.length === 0) continue;
+    for (const contentDiv of contentDivs) {
+      const nameElement = contentDiv.querySelector('div[class="KcIKyf jxFHg"]');
+      const speakerName = nameElement ? nameElement.textContent.trim() : '';
+      const isUserCaption = speakerName === 'You';
       
-      const sentence = spans.map(span => span.textContent.trim()).join(' ');
-      
-      // Try to determine if this is the user's caption
-      const parentBlock = block.closest('div[jsname="YSxPC"]');
-      const isUserCaption = determineIfUserCaption(parentBlock);
-      
-      // Add to appropriate captions collection
-      if (isUserCaption) {
-        if (selfCaptions.length > 0) {
-          selfCaptions += ' ';
+      // Find all caption text under the YSxPC divs in this content section
+      const captionSections = contentDiv.querySelectorAll('div[jsname="YSxPC"]');
+      for (const section of captionSections) {
+        // Find the caption text divs with jsname="tgaKEf"
+        const captionDivs = section.querySelectorAll('div[jsname="tgaKEf"]');
+        for (const captionDiv of captionDivs) {
+          const text = captionDiv.textContent.trim();
+          if (!text) continue;
+          
+          // Add to self captions if this is the user
+          if (isUserCaption) {
+            if (selfCaptions) selfCaptions += ' ';
+            selfCaptions += text;
+          }
+          
+          // Add to all captions with speaker name
+          if (allCaptions) allCaptions += ' ';
+          if (speakerName && !allCaptions.endsWith(`${speakerName}: `)) {
+            allCaptions += `${speakerName}: `;
+          }
+          allCaptions += text;
+          
+          console.log(`VC - Caption found from ${speakerName || 'unknown'}: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
         }
-        selfCaptions += sentence;
       }
-      
-      // Add to all captions
-      allCaptions += sentence + ' ';
-      
-      console.log('VC - Caption found:', sentence.substring(0, 50) + (sentence.length > 50 ? '...' : ''));
     }
     
-    return allCaptions || selfCaptions ? { selfCaptions, allCaptions } : null;
+    return (allCaptions || selfCaptions) ? { selfCaptions, allCaptions } : null;
   }
 
-  function determineIfUserCaption(element: Element) {
-    if (!element) return false;
-    
-    // Method 1: Check for visual indicators in parent elements
-    const hasUserIndicators = element.classList.contains('wY1pdd');
-    
-    // Method 2: Look for "You" text nearby
-    const siblingElements: any[] | HTMLCollection = element.parentElement?.children || [];
-    for (const sibling of siblingElements) {
-      if (sibling.textContent?.includes('You')) {
-        return true;
-      }
-    }
-    
-    // Check parent elements up to 3 levels
-    let current = element;
-    for (let i = 0; i < 3; i++) {
-      if (!current.parentElement) break;
-      current = current.parentElement;
-      
-      if (current.textContent?.includes('You')) {
-        return true;
-      }
-    }
-
-    const isFirstCaptionBlock = !element.previousElementSibling;
-    return isFirstCaptionBlock || hasUserIndicators;
-  }
-  
   async function processAndGenerateVisuals(captions: string) {
     console.log('VC - processAndGenerateVisuals', captions);
     const text = extractTextForProcessing(captions);
@@ -950,19 +930,19 @@ declare global {
 
   window.addEventListener('message', (event) => {
     const message = event.data;
-
-  if (message.type !== 'CURRENT_SCENE') return;
+    if (message.type !== 'CURRENT_SCENE') return;
     toggleEffect(message.scene === 'Interactive Images (beta)');
   });
 
   toggleEffect(true);
 
   window.postMessage(
-      {
-        type: 'GET_CURRENT_SCENE',
-        outgoing: true,
-      },
-      '*');
+    {
+      type: 'GET_CURRENT_SCENE',
+      outgoing: true,
+    },
+    '*'
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   // HELPERS
