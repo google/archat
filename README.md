@@ -4,17 +4,22 @@ Copyright 2023 Google LLC
 
 [![ARChat Visual Captions](images/visual_captions_CHI2023.gif)](https://research.google/pubs/pub52074)
 
-**ARChat** is a research project written in TypeScript and JavaScript and aims
-to render live captions and relevant images directly onto the camera stream for
-online video conferences. It is an example Chrome Plugin that helps developers
-and researchers to prototype novel AR experiences with real-time and real-world
-conversations. **ARChat** is firstly introduced in our ACM CHI 2023 paper,
-entitled
+**ARChat** is a research project as a Chrome plugin that renders live captions
+and relevant images directly onto the camera stream for online video conferences.
+It helps developers and researchers to prototype novel AR experiences with
+real-time and real-world conversations.
+
+The project is no longer under active maintenance and we encourage new
+contributors to add this feature to [XR Blocks](git@github.com:google/xrblocks.git)
+
+**ARChat** is firstly introduced in our ACM CHI 2023 paper, entitled
 ["Visual Captions: Augmenting Verbal Communication With On-the-fly Visuals"](https://duruofei.com/projects/augmentedcommunication),
 and is also used in
 ["Modeling and Improving Text Stability in Live Captions"](https://duruofei.com/papers/Liu_ModelingAndImprovingTextStabilityInLiveCaptions_CHIEA2023.pdf)
 and ["Rapsai: Accelerating Machine Learning Prototyping of Multimedia
 Applications Through Visual Programming"](https://duruofei.com/projects/rapsai).
+You may read our [blog post](https://research.google/blog/visual-captions-using-large-language-models-to-augment-video-conferences-with-dynamic-visuals/)
+for more applications.
 Please cite ARChat as follows if you find it useful in your projects:
 
 ```bibtex
