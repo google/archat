@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Chat Side Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 100%;
+    }
+    
+    .header {
+      margin-bottom: 16px;
+    }
+    
+    .status-bar {
+      background-color: #f5f5f5;
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 16px;
+    }
+    
+    .tab-button {
+      padding: 8px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 2px solid transparent;
+    }
+    
+    .tab-button.active {
+      border-bottom: 2px solid #1a73e8;
+      color: #1a73e8;
+    }
+    
+    .tab-panel {
+      display: none;
+    }
+    
+    .tab-panel.active {
+      display: block;
+    }
+    
+    select, input, button {
+      padding: 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    select, button {
+      width: 100%;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    
+    .setting-group {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .slider-container input[type="range"] {
+      flex-grow: 1;
+    }
+    
+    .slider-value {
+      min-width: 24px;
+      text-align: center;
+    }
+    
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .checkbox-container input[type="checkbox"] {
+      margin: 0;
+    }
+    
+    .section-header {
+      font-weight: bold;
+      margin: 16px 0 8px 0;
+    }
+    
+    .advanced-toggle {
+      color: #1a73e8;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+    
+    #advanced-content {
+      display: none;
+    }
+    
+    textarea {
+      width: 100%;
+      height: 80px;
+      resize: vertical;
+    }
+    
+    /* Scene-specific styling */
+    #blank-page, #sound-settings, #visual-captions {
+      padding: 12px 0;
+    }
+    
+    /* Add specific styles for collapsed sections */
+    .collapsible-section {
+      margin-bottom: 8px;
+    }
+    
+    .collapsible-header {
+      padding: 8px;
+      background-color: #f5f5f5;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    
+    .collapsible-content {
+      padding: 0 8px;
+    }
+    
+    /* Add section styles to match screenshots */
+    .category-title {
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+    
+    .section-title {
+      font-size: 18px;
+      margin: 20px 0 10px 0;
+      font-style: italic;
+    }
+    
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .settings-label {
+      font-size: 16px;
+    }
+    
+    hr.section-divider {
+      margin: 20px 0;
+      border: none;
+      border-top: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>AR Chat Settings</h1>
+    </div>
+    
+    <div id="status-display" class="status-bar">
+      Scene: None | Captions: Off
+    </div>
+    
+    <div id="tab-scenes" class="tab-panel active">
+      <div class="setting-group">
+        <label for="scene-selector">Select Scene</label>
+        <select id="scene-selector">
+          <option value="">Select a scene</option>
+          <option value="PassThrough">Basic Interactive Camera</option>
+          <option value="Sound">Sound (default)</option>
+          <option value="InteractiveImage">Interactive Images (beta)</option>
+        </select>
+      </div>
+      
+      <!-- Blank page (shown when no scene is selected) -->
+      <div id="blank-page">
+        <p>Please select a scene from the dropdown above.</p>
+      </div>
+      
+      <!-- Sound settings page - Matches Image 1 -->
+      <div id="sound-settings" style="display: none;">        
+        <div class="settings-row">
+          <div style="flex: 1;">
+            <select id="source-language">
+              <option value="en-US">English (United States)</option>
+            </select>
+          </div>
+          
+          <div style="display: flex; align-items: center; margin: 0 15px;">
+            <span>→</span>
+          </div>
+          
+          <div style="flex: 1;">
+            <select id="target-language">
+              <option value="en-US">English (United States)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Summarization Mode</span>
+          <select id="summarization-mode">
+            <option value="None">No Summary</option>
+            <option value="Automatic">Automatic</option>
+            <option value="SummaryOnly">Summary Only</option>
+            <option value="OnTap">On Tap</option>
+          </select>
+        </div>
+        
+        <hr class="section-divider" />
+        
+        <div class="settings-row">
+          <span class="settings-label">Advanced settings</span>
+          <div class="advanced-toggle" id="toggle-advanced">Hide</div>
+        </div>
+        
+        <div id="advanced-content" style="display: block;">
+          <h3 class="section-title">Screen</h3>
+          
+          <div class="settings-row">
+            <span class="settings-label">Position x</span>
+            <div class="slider-container" style="width: 60%;">
+              <input type="range" id="range-screenX" min="0" max="1" step="0.01" value="0.5">
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Position y</span>
+            <div class="slider-container" style="width: 60%;">
+              <input type="range" id="range-screenY" min="0" max="1" step="0.01" value="0.5">
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Size</span>
+            <div class="slider-container" style="width: 60%;">
+              <input type="range" id="range-screenSize" min="0.5" max="2" step="0.1" value="1">
+            </div>
+          </div>
+          
+          <h3 class="section-title">Text</h3>
+          
+          <div class="settings-row">
+            <span class="settings-label">Font family</span>
+            <select id="font-family">
+              <option value="Roboto">Roboto</option>
+              <option value="Arial">Arial</option>
+              <option value="Helvetica">Helvetica</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Font color</span>
+            <select id="font-color">
+              <option value="white">White</option>
+              <option value="yellow">Yellow</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Text size</span>
+            <select id="font-size">
+              <option value="48">48px</option>
+              <option value="56" selected>56px</option>
+              <option value="64">64px</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Caption size</span>
+            <select id="caption-size">
+              <option value="32">32px</option>
+              <option value="40" selected>40px</option>
+              <option value="48">48px</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Max line(s)</span>
+            <select id="max-lines">
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5" selected>5</option>
+              <option value="6">6</option>
+            </select>
+          </div>
+          
+          <h3 class="section-title">Summary</h3>
+          
+          <div class="settings-row">
+            <span class="settings-label">Language model</span>
+            <select id="language-model">
+              <option value="Generic" selected>Generic</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Background color</span>
+            <select id="background-color">
+              <option value="60% Black" selected>60% Black</option>
+              <option value="80% Black">80% Black</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Show summary after</span>
+            <select id="summary-delay">
+              <option value="1000">1s</option>
+              <option value="1500" selected>1.5s</option>
+              <option value="2000">2s</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Summary display time</span>
+            <select id="summary-show-time">
+              <option value="5000">5s</option>
+              <option value="8000" selected>8s</option>
+              <option value="10000">10s</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Min words to summarize</span>
+            <select id="summary-min-words">
+              <option value="20">20</option>
+              <option value="25" selected>25</option>
+              <option value="30">30</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Max words to summarize</span>
+            <select id="summary-max-words">
+              <option value="100">100</option>
+              <option value="150" selected>150</option>
+              <option value="200">200</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Summary color</span>
+            <select id="summary-color">
+              <option value="white" selected>White</option>
+              <option value="yellow">Yellow</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Caption color</span>
+            <select id="caption-color">
+              <option value="white">White</option>
+              <option value="orange" selected>Orange</option>
+              <option value="yellow">Yellow</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Use meet captions</span>
+            <select id="use-meet-captions">
+              <option value="Everyone" selected>Everyone</option>
+              <option value="Speaker">Speaker</option>
+              <option value="Nobody">Nobody</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Auto Capitalization</span>
+            <select id="auto-capitalization">
+              <option value="Enabled" selected>Enabled</option>
+              <option value="Disabled">Disabled</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Emphasizing Mode</span>
+            <select id="emphasizing-mode">
+              <option value="Disabled" selected>Disabled</option>
+              <option value="Enabled">Enabled</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Background Image</span>
+            <select id="background-image">
+              <option value="None">None</option>
+              <option value="Camera" selected>Camera</option>
+            </select>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">System logs</span>
+          </div>
+          <textarea id="text-log-meet" placeholder="click (twice) to reveal logs"></textarea>
+        </div>
+      </div>
+      
+      <!-- Visual captions settings page - Matches Image 2 -->
+      <div id="visual-captions" style="display: none;">        
+        <div class="settings-row">
+          <span class="settings-label">Enable Visual Captions</span>
+          <input type="checkbox" id="enable-captions" checked>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">AI Proactiveness</span>
+          <select id="ai-proactiveness">
+            <option value="suggestion" selected>Suggestion</option>
+            <option value="automatic">Automatic</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+        
+        <hr class="section-divider" />
+        
+        <h3 class="section-title">Advanced Settings</h3>
+        
+        <h4 class="section-title">Algorithm</h4>
+        
+        <div class="settings-row">
+          <span class="settings-label">All Participants' Captions</span>
+          <input type="checkbox" id="all-participants">
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Suggest Emojis</span>
+          <input type="checkbox" id="suggest-emojis" checked>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Suggest Personal</span>
+          <input type="checkbox" id="suggest-personal" checked>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Model</span>
+          <select id="model-capability">
+            <option value="most-capable" selected>Most Capable</option>
+            <option value="balanced">Balanced</option>
+            <option value="fastest">Fastest</option>
+          </select>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Min num words: 4</span>
+          <div class="slider-container" style="width: 60%;">
+            <input type="range" id="min-words" min="1" max="10" value="4">
+          </div>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Last N Sentences: 1</span>
+          <div class="slider-container" style="width: 60%;">
+            <input type="range" id="last-n-sentences" min="1" max="5" value="1">
+          </div>
+        </div>
+        
+        <h4 class="section-title">Scrolling View</h4>
+        
+        <div class="settings-row">
+          <span class="settings-label"># Max Visuals: 5</span>
+          <div class="slider-container" style="width: 60%;">
+            <input type="range" id="max-visuals" min="1" max="10" value="5">
+          </div>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label"># Max Emojis: 4</span>
+          <div class="slider-container" style="width: 60%;">
+            <input type="range" id="max-emojis" min="1" max="10" value="4">
+          </div>
+        </div>
+        
+        <div class="settings-row">
+          <span class="settings-label">Visual Size: 1</span>
+          <div class="slider-container" style="width: 60%;">
+            <input type="range" id="visual-size" min="0.5" max="2" step="0.1" value="1">
+          </div>
+        </div>
+        
+        <hr class="section-divider" />
+        
+        <h3 class="section-title">Logging</h3>
+        
+        <div class="settings-row">
+          <span class="settings-label">Enable Logging</span>
+          <input type="checkbox" id="enable-logging">
+        </div>
+        
+        <button id="download-log">Download Log</button>
+        
+        <!-- Interactive Image section (only shown when InteractiveImage is selected) -->
+        <div id="interactive-image-section" style="display: none;">
+          <hr class="section-divider" />
+          
+          <h3 class="section-title">Interactive Image Settings</h3>
+          
+          <div class="setting-group">
+            <label for="image-url">Image URL</label>
+            <input type="text" id="image-url" placeholder="Enter image URL">
+          </div>
+          
+          <div class="setting-group">
+            <label for="image-name">Image Name</label>
+            <input type="text" id="image-name" placeholder="Enter image name">
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Position X: 0.1</span>
+            <div class="slider-container" style="width: 60%;">
+              <input type="range" id="image-x" min="0" max="1" step="0.01" value="0.1">
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Position Y: 0.1</span>
+            <div class="slider-container" style="width: 60%;">
+              <input type="range" id="image-y" min="0" max="1" step="0.01" value="0.1">
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Width: 0.3</span>
+            <div class="slider-container" style="width: 60%;">
+              <input type="range" id="image-width" min="0.1" max="1" step="0.01" value="0.3">
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <span class="settings-label">Height: 0.3</span>
+            <div class="slider-container" style="width: 60%;">
+              <input type="range" id="image-height" min="0.1" max="1" step="0.01" value="0.3">
+            </div>
+          </div>
+          
+          <button id="apply-image">Apply Image</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

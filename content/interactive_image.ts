@@ -720,11 +720,7 @@ declare global {
   function createWidget(entity: Entity, isEmoji: boolean) {
     const videos = document.querySelectorAll('video');
     let video;
-    if (videos.length === 1) {
-      video = videos[0];
-    } else {
-      video = Array.from(videos).find((video) => getName(video).includes('You'));
-    }
+    video = videos[0];
     const container = video.parentElement;
 
     if (isEmoji) {
@@ -741,7 +737,7 @@ declare global {
   //////////////////////////////////////////////////////////////////////////////
   // MAIN
   //////////////////////////////////////////////////////////////////////////////
-  let fetchCaptionsHandle: number|NodeJS.Timeout;
+  let fetchCaptionsHandle: number|NodeJS.Timeout; 
   async function fetchGoogleMeetCaptions() {
     options.update();
     if (!options.enabled) {
@@ -761,31 +757,62 @@ declare global {
   
     return scheduleNextFetch();
   }
-  
+
   function fetchCaptionsFromDOM() {
-    const gMeetCaptionsView = document.querySelector(`div[jscontroller="${gMeetControllerName}"]`);
-    if (!gMeetCaptionsView) return null;
-  
+    const captionContainer = document.querySelector('div[jsname="dsyhDe"]');
+    if (!captionContainer) {
+      console.log('VC - No caption container found');
+      return null;
+    }
+    
     let selfCaptions = '';
     let allCaptions = '';
-  
-    const divs = document.querySelectorAll('div[class="TBMuR bj4p3b"]');
-    for (const div of divs) {
-      const name = div.querySelector('div[class="zs7s8d jxFHg"]').textContent;
-      const sentence = Array.from(div.querySelectorAll('span'))
-        .map(span => span.textContent.trim())
-        .join(' ');
-  
-      if (name === 'You' || name === 'Your Presentation') {
-        selfCaptions += sentence;
-      }
-      allCaptions += sentence;
+
+    const childDivs = Array.from(captionContainer.children[0].children);
+    if (childDivs.length <= 1) {
+      console.log('VC - Not enough caption content divs found');
+      return null;
     }
-  
-    return { selfCaptions, allCaptions };
+    
+    const contentDivs = childDivs.slice(0, -1);
+    
+    for (const contentDiv of contentDivs) {
+      const nameElement = contentDiv.querySelector('div[class="KcIKyf jxFHg"]');
+      const speakerName = nameElement ? nameElement.textContent.trim() : '';
+      const isUserCaption = speakerName === 'You';
+      
+      // Find all caption text under the YSxPC divs in this content section
+      const captionSections = contentDiv.querySelectorAll('div[jsname="YSxPC"]');
+      for (const section of captionSections) {
+        // Find the caption text divs with jsname="tgaKEf"
+        const captionDivs = section.querySelectorAll('div[jsname="tgaKEf"]');
+        for (const captionDiv of captionDivs) {
+          const text = captionDiv.textContent.trim();
+          if (!text) continue;
+          
+          // Add to self captions if this is the user
+          if (isUserCaption) {
+            if (selfCaptions) selfCaptions += ' ';
+            selfCaptions += text;
+          }
+          
+          // Add to all captions with speaker name
+          if (allCaptions) allCaptions += ' ';
+          if (speakerName && !allCaptions.endsWith(`${speakerName}: `)) {
+            allCaptions += `${speakerName}: `;
+          }
+          allCaptions += text;
+          
+          console.log(`VC - Caption found from ${speakerName || 'unknown'}: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
+        }
+      }
+    }
+    
+    return (allCaptions || selfCaptions) ? { selfCaptions, allCaptions } : null;
   }
-  
+
   async function processAndGenerateVisuals(captions: string) {
+    console.log('VC - processAndGenerateVisuals', captions);
     const text = extractTextForProcessing(captions);
     if (text === lastText) {
       console.log('VC - same text will not generate new content: ', text);
@@ -903,19 +930,19 @@ declare global {
 
   window.addEventListener('message', (event) => {
     const message = event.data;
-
-  if (message.type !== 'CURRENT_SCENE') return;
+    if (message.type !== 'CURRENT_SCENE') return;
     toggleEffect(message.scene === 'Interactive Images (beta)');
   });
 
   toggleEffect(true);
 
   window.postMessage(
-      {
-        type: 'GET_CURRENT_SCENE',
-        outgoing: true,
-      },
-      '*');
+    {
+      type: 'GET_CURRENT_SCENE',
+      outgoing: true,
+    },
+    '*'
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   // HELPERS

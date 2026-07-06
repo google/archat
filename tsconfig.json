@@ -14,6 +14,7 @@
     "options/options.ts",
     "background/background.ts",
     "content/client.ts",
-    "content/interactive_image.ts"
+    "content/interactive_image.ts",
+    "sidepanel.ts"
   ]
 }
